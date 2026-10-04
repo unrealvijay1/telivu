@@ -1,3 +1,5 @@
 site/_build/
 **/__pycache__/
 artifacts/
+site/IMPLEMENTATION_REPORT.md
+site/scripts/prepare-publication.py

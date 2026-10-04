@@ -35,8 +35,15 @@ try {
    await page.evaluate(()=>document.fonts.ready);
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Horizontal overflow at '+width);
    assert.equal(await page.locator('h1').innerText(),'Clarity in\nuncertainty.');
-   assert.equal(await page.locator('[data-download]').first().innerText(),'Public download coming soon');
-   assert((await page.locator('[data-download]').first().getAttribute('href')).includes(prefix+'index.html#download'));
+   const config=await page.evaluate(()=>window.TELIVU_CONFIG);
+   const enabled=config.downloadEnabled===true&&/^https:\/\//.test(config.downloadUrl);
+   const expected=enabled?config.downloadUrl:'http://127.0.0.1:8766'+prefix+'index.html#download';
+   const ctas=page.locator('[data-download]');assert.equal(await ctas.count(),5);
+   for(const cta of await ctas.all()){
+    assert.equal(await cta.innerText(),enabled?'Download Free Trial':'Public download coming soon');
+    assert.equal(await cta.getAttribute('href'),expected);
+   }
+   if(enabled)assert.equal(await page.locator('[data-release-notes]').getAttribute('href'),config.releaseNotesUrl);
    if(width<=800){
     const toggle=page.locator('.menu-toggle');await toggle.focus();await page.keyboard.press('Enter');
     assert.equal(await toggle.getAttribute('aria-expanded'),'true');assert(await page.locator('#navigation').isVisible());
@@ -52,12 +59,14 @@ try {
   }
   await page.goto('http://127.0.0.1:8766'+prefix+'resources/documentation/');
   assert((await page.locator('h1').innerText()).includes('Documentation'));
-  assert((await page.locator('[data-download]').first().getAttribute('href')).includes(prefix+'index.html#download'));
+  const nestedConfig=await page.evaluate(()=>window.TELIVU_CONFIG);
+  assert.equal(await page.locator('[data-download]').first().getAttribute('href'),nestedConfig.downloadEnabled?nestedConfig.downloadUrl:'http://127.0.0.1:8766'+prefix+'index.html#download');
  }
  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('http://127.0.0.1:8766/');
  assert.equal(await page.locator('.curve').evaluate(el=>getComputedStyle(el).animationName),'none');
- await page.route('**/site-config.js',route=>route.fulfill({contentType:'text/javascript',body:'window.TELIVU_CONFIG={productVersion:"0.2.1",downloadEnabled:true,downloadUrl:"https://example.com/approved.exe",installerSize:"112 MB"};'}));
+ await page.route('**/site-config.js',route=>route.fulfill({contentType:'text/javascript',body:'window.TELIVU_CONFIG={productVersion:"0.2.1",downloadEnabled:true,downloadUrl:"https://example.com/approved.exe",installerSize:"112 MB",releaseStatus:"Unsigned prerelease"};'}));
  await page.reload();assert.equal(await page.locator('[data-download]').first().innerText(),'Download Free Trial');assert.equal(await page.locator('[data-download]').first().getAttribute('href'),'https://example.com/approved.exe');assert(await page.locator('[data-installer-size]').isVisible());
+ assert((await page.locator('[data-download-status]').innerText()).includes('Unsigned prerelease'));
  await page.unroute('**/site-config.js');
  await page.route('**/site-config.js',route=>route.fulfill({contentType:'text/javascript',body:'window.TELIVU_CONFIG={downloadEnabled:true,downloadUrl:"file:///internal.exe"};'}));
  await page.reload();assert.equal(await page.locator('[data-download]').first().innerText(),'Public download coming soon');
