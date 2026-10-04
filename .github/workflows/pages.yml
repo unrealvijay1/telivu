@@ -1,0 +1,47 @@
+name: Deploy Telivu website
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', 'Directory.Build.props', '.github/workflows/pages.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: read
+concurrency:
+  group: telivu-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Read Pages publishing URL
+        id: pages
+        uses: actions/configure-pages@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate website artifact
+        env:
+          SITE_URL: ${{ steps.pages.outputs.base_url }}/
+        run: python site/scripts/build.py
+      - name: Validate local links and artifact boundaries
+        run: python site/scripts/check.py site/_build
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          # Upload the generated contents, not the enclosing site/ directory.
+          # site/index.html becomes artifact index.html.
+          path: site/_build
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
