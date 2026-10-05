@@ -4,6 +4,7 @@ import {createServer} from 'node:http';
 import {readFile,stat,mkdir,writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.PLAYWRIGHT_PATH || 'playwright');
 const root=path.resolve('site/_build');
@@ -75,6 +76,24 @@ try {
  assert(await page.locator('.product-shot figcaption').isVisible());assert.equal(await page.locator('.placeholder').count(),0);
  // Images retain dimensions, alt text and captions if an asset cannot load.
  const noJS=await browser.newContext({javaScriptEnabled:false,viewport:{width:375,height:812}});const fallback=await noJS.newPage();await fallback.goto('http://127.0.0.1:8766/');assert(await fallback.locator('#navigation').isVisible());assert.equal(await fallback.locator('[data-download]').first().innerText(),'Download Telivu Free');await noJS.close();
+ if(process.env.VERIFY_LIVE_DOWNLOAD==='1'){
+  await page.unroute('**/assets/product/*.webp');
+  await page.goto('http://127.0.0.1:8766/');
+  const config=await page.evaluate(()=>window.TELIVU_CONFIG);
+  const pending=page.waitForEvent('download',{timeout:120000});
+  await page.locator('.hero [data-download]').click();
+  const download=await pending;
+  const installer=path.join(output,'existing-download-browser.exe');
+  await download.saveAs(installer);
+  assert.equal(await download.failure(),null);
+  // GitHub redirects its stable release URL to a temporary release-assets URL.
+  assert(['github.com','release-assets.githubusercontent.com'].includes(new URL(download.url()).hostname));
+  assert.equal(download.suggestedFilename(),path.basename(new URL(config.downloadUrl).pathname));
+  const bytes=await readFile(installer);
+  assert.equal(bytes.length,Number(process.env.EXPECTED_INSTALLER_BYTES));
+  assert.equal(createHash('sha256').update(bytes).digest('hex'),process.env.EXPECTED_INSTALLER_SHA256);
+  results.push('Existing Download Flow: PASS; actual hero-button click, complete existing installer transfer and SHA-256 verified.');
+ }
  assert.deepEqual(errors,[]);
  results.push('PASS: nested routes, reduced motion, enabled download, unsafe URL rejection, missing images, no-JS navigation; zero JS errors.');
  await writeFile(path.join(output,'browser-results.txt'),results.join('\n')+'\n');console.log(results.join('\n'));
