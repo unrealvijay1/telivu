@@ -8,6 +8,6 @@ window.TELIVU_CONFIG = Object.freeze({
   siteUrl: "", // Published root including project path and trailing slash.
   customDomain: "", // Host only; build generates CNAME when configured.
   contactUrl: "", // Approved HTTPS support URL or public mailto address.
-  demoUrl: "", // Empty uses the honest demo placeholder.
+  demoUrl: "", // Optional external demo URL.
   analytics: null // Reserved; no analytics scripts are loaded.
 });

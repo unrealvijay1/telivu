@@ -7,10 +7,10 @@
   const download = config.downloadEnabled === true ? https(config.downloadUrl) : "";
   document.querySelectorAll("[data-download]").forEach(link => {
     link.href = download || new URL("index.html#download", base).href;
-    link.textContent = download ? "Download Free Trial" : "Public download coming soon";
+    link.textContent = download ? "Download Telivu Free" : "Download unavailable";
   });
-  document.querySelectorAll("[data-download-status]").forEach(el => { el.textContent = download ? (config.releaseStatus === "Unsigned prerelease" ? "Unsigned prerelease · 30-day evaluation. Windows may show publisher warnings. Final clean-machine validation remains outstanding." : "30-day evaluation · Microsoft Excel on Windows") : "The installer is not yet approved for public distribution."; });
-  document.querySelectorAll("[data-version]").forEach(el => { el.textContent = config.productVersion || "Coming soon"; });
+  document.querySelectorAll("[data-download-status]").forEach(el => { el.textContent = download ? "Windows installer · " + (config.releaseStatus || "Public release") : "Download unavailable"; });
+  document.querySelectorAll("[data-version]").forEach(el => { el.textContent = config.productVersion || ""; });
   document.querySelectorAll("[data-installer-size]").forEach(el => { if (download && config.installerSize) { el.hidden = false; el.textContent = "Installer size: " + config.installerSize; } });
   let contact = https(config.contactUrl);
   if (/^mailto:[^\s?]+@[^\s?]+$/.test(config.contactUrl || "")) contact = config.contactUrl;
